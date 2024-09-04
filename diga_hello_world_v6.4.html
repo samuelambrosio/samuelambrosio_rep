@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Read Aloud Example</title>
+    <style>
+        .record {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 10px; /* Cantos arredondados */
+			background-color: #FFFACD; /* Amarelo pastel claro */
+        }
+        .record img {
+            margin-right: 10px;
+        }
+        .record .text {
+            flex-grow: 1;
+        }
+        .record button {
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        .record button img {
+            width: 72px; /* Aumenta o tamanho do ícone em 3x */
+            height: 72px; /* Aumenta o tamanho do ícone em 3x */
+        }
+        .record:nth-child(odd) {
+            background-color: #FFB6C1; /* Rosa claro (bebê) */
+        }
+        .record:nth-child(even) {
+            background-color: #ADD8E6; /* Azul claro (bebê) */
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section h3 {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        .section h3::before {
+            content: '▶'; /* Seta apontando para a direita */
+            margin-right: 10px;
+        }
+        .section-content {
+            display: none;
+            margin-top: 10px;
+        }
+        .section.expanded h3::before {
+            content: '▼'; /* Seta apontando para baixo */
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <label for="gender">Selecione o Gênero:</label>
+        <input type="radio" id="girl" name="gender" value="girl" onclick="updateVoiceList()"> 
+        <img src="https://th.bing.com/th/id/R.437754cb711e6c745ad96b3661552b56?rik=DVa9lgjA9siiLw&pid=ImgRaw&r=0" alt="Menina" width="20"> Menina
+        <input type="radio" id="boy" name="gender" value="boy" onclick="updateVoiceList()"> 
+        <img src="https://cdn.icon-icons.com/icons2/1465/PNG/512/112boy2_100696.png" alt="Menino" width="20"> Menino
+    </div>
+
+    <div>
+        <label for="voices">Selecione a Voz:</label>
+        <select id="voices" name="voices"></select>
+    </div>
+
+    <div>
+        <label for="rate">Velocidade da Fala:</label>
+        <input type="range" id="rate" name="rate" min="0.1" max="2.0" step="0.1" value="1.0" oninput="updateRateValue(this.value)">
+        <span id="rateValue">1.0</span>
+    </div>
+
+    <div id="records"></div>
+
+    <div id="voiceInfo">
+        <h3>Informações da Voz Selecionada:</h3>
+        <p id="voiceName">Nome: </p>
+        <p id="voiceLang">Idioma: </p>
+        <p id="voiceGender">Gênero: </p>
+        <p id="voiceURI">URI: </p>
+    </div>
+
+    <script>
+        let speechRate = 1.0;
+        let selectedVoice = null;
+
+        const records = [
+            { img: 'https://pngimg.com/uploads/globe/globe_PNG31.png', text: 'Hello World!', section: 'English' },
+            { img: 'https://st.depositphotos.com/1005314/1410/v/950/depositphotos_14107721-stock-illustration-good-morning.jpg', text: 'Good Morning!', section: 'English' },
+			{ img: 'https://img.freepik.com/vetores-gratis/cena-da-natureza-a-noite-com-paisagem-de-prados-e-fundo-de-montanha_1308-61406.jpg', text: 'Good Afternoon!', section: 'English' },
+            { img: 'https://th.bing.com/th/id/OIP.nbrfWotys8lWNJwpjR5xaQHaFC?rs=1&pid=ImgDetMain', text: 'Good Night!', section: 'English' },
+            { img: 'https://thumbs.dreamstime.com/b/i-love-you-heart-vector-valentine-related-flat-icon-style-152379323.jpg', text: 'I love you!', section: 'English' },
+            { img: 'https://th.bing.com/th/id/OIP.ZAjUjE9vyzAbX627ggq7vAHaG7?rs=1&pid=ImgDetMain', text: 'I love Stitch!', section: 'English' },
+			{ img: 'https://i.etsystatic.com/42415510/r/il/1ada05/5582564799/il_1588xN.5582564799_1gqm.jpg', text: 'Angel is very pretty!', section: 'English' },
+			{ img: 'https://th.bing.com/th/id/R.3ca592c6997a7c48eb003882c396b53d?rik=7j34%2bFPJpxiJOg&pid=ImgRaw&r=0', text: 'Lila is very funny.', section: 'English' },
+			{ img: 'https://th.bing.com/th/id/OIG3.e26jNXmA7MiKeQJcXryY?pid=ImgGn', text: 'A DISH CONSISTING OF BEANS, FRENCH FRIES, BARBECUE MEAT, AND SAUSAGE.', section: 'Food' }	
+        ];
+
+        function updateRateValue(value) {
+            speechRate = value;
+            document.getElementById('rateValue').innerText = value;
+        }
+
+        function populateVoiceList() {
+            const voices = speechSynthesis.getVoices();
+            const voiceSelect = document.getElementById('voices');
+            voiceSelect.innerHTML = '';
+
+            voices.forEach(voice => {
+                if (voice.lang === 'en-US') {
+                    const option = document.createElement('option');
+                    option.textContent = `${voice.name} (${voice.gender})`;
+                    option.value = voice.name;
+                    voiceSelect.appendChild(option);
+                }
+            });
+
+            updateVoiceList();
+        }
+
+        function updateVoiceList() {
+            const voices = speechSynthesis.getVoices();
+            const voiceSelect = document.getElementById('voices');
+            const gender = document.querySelector('input[name="gender"]:checked').value;
+
+            if (gender === 'girl') {
+                selectedVoice = voices.find(voice => voice.name.startsWith('Microsoft Ana') && voice.lang === 'en-US');
+            } else if (gender === 'boy') {
+                selectedVoice = voices.find(voice => voice.name.startsWith('Microsoft Guy') && voice.lang === 'en-US');
+            }
+
+            if (selectedVoice) {
+                voiceSelect.value = selectedVoice.name;
+                displayVoiceInfo(selectedVoice);
+            }
+        }
+
+        function displayVoiceInfo(voice) {
+            if (voice) {
+                document.getElementById('voiceName').innerText = `Nome: ${voice.name}`;
+                document.getElementById('voiceLang').innerText = `Idioma: ${voice.lang}`;
+                document.getElementById('voiceGender').innerText = `Gênero: ${voice.gender}`;
+                document.getElementById('voiceURI').innerText = `URI: ${voice.voiceURI}`;
+            }
+        }
+
+        function readAloud(button) {
+            const text = button.previousElementSibling.innerText;
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US'; // Define o idioma para inglês
+            utterance.rate = speechRate; // Define a velocidade da fala
+
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+            }
+
+            speechSynthesis.speak(utterance);
+        }
+
+        function renderRecords() {
+            const recordsDiv = document.getElementById('records');
+            recordsDiv.innerHTML = '';
+            const sections = {};
+
+            records.forEach(record => {
+                if (!sections[record.section]) {
+                    sections[record.section] = [];
+                }
+                sections[record.section].push(record);
+            });
+
+            for (const section in sections) {
+                const sectionDiv = document.createElement('div');
+                sectionDiv.className = 'section';
+                sectionDiv.innerHTML = `
+                    <h3 onclick="toggleSection(this)">${section}</h3>
+                    <div class="section-content">
+                        ${sections[section].map(record => `
+                            <div class="record">
+                                <img src="${record.img}" alt="Image" width="100">
+                                <span class="text">${record.text}</span>
+                                <button onclick="readAloud(this)">
+                                    <img src="https://cdn-icons-png.flaticon.com/256/6002/6002242.png" alt="Alto-falante">
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                recordsDiv.appendChild(sectionDiv);
+            }
+        }
+
+        function toggleSection(header) {
+            const section = header.parentElement;
+            const content = header.nextElementSibling;
+            const isExpanded = content.style.display === 'block';
+            content.style.display = isExpanded ? 'none' : 'block';
+            section.classList.toggle('expanded', !isExpanded);
+        }
+
+        // Carrega as vozes disponíveis
+        speechSynthesis.onvoiceschanged = populateVoiceList;
+
+        // Renderiza os registros
+        renderRecords();
+    </script>
+</body>
+</html>
